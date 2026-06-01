@@ -15,6 +15,10 @@ namespace yail
     // the host process will terminate when the injected EXE's main() returns.
     // GetModuleHandle(nullptr) inside the injected EXE still resolves to the
     // host process image, not the manually-mapped one.
+    // The returned address is not a loader-managed HMODULE. Passing it to
+    // FreeLibrary or FreeLibraryAndExitThread is invalid. YAIL does not
+    // currently provide manual unmapping.
+    // An x64 build can also map x86 images into WOW64 targets in-process.
 
     [[nodiscard]]
     std::expected<std::uintptr_t, std::string> manual_map_injection_from_raw(

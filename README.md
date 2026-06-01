@@ -39,7 +39,7 @@ cmake --preset windows-debug-vcpkg-x86
 cmake --build cmake-build/build/windows-debug-vcpkg-x86
 ```
 
-The injector and the target image must share bitness — an x86 build of yail injects x86 PEs into x86 (Wow64) processes, an x64 build injects x64 PEs into x64 processes.
+Native injection requires matching bitness: an x86 build of yail injects x86 PEs into x86 (WOW64) processes, and an x64 build injects x64 PEs into x64 processes. An x64 build can also inject x86 PEs into x86 targets using its embedded x86 loader.
 
 Examples build by default. Disable with `-DYAIL_BUILD_EXAMPLES=OFF`.
 
@@ -83,13 +83,22 @@ std::vector<uint8_t> bytes = /* ... */;
 auto result = yail::manual_map_injection_from_raw(bytes, "target.exe");
 ```
 
+### Inject x86 from an x64 injector
+
+The normal APIs detect x86 payloads and use the embedded x86 loader automatically. No helper process is launched:
+
+```cpp
+auto result = yail::manual_map_injection_from_raw(bytes, "x86-target.exe");
+```
+
 ## API
 
 ```cpp
 namespace yail
 {
     // Both functions accept DLLs and EXEs (matched by IMAGE_FILE_DLL).
-    // PE machine type must match the build (x64 build → AMD64 PE, x86 → I386).
+    // Native PE machine type must match the build. An x64 build also accepts
+    // I386 PEs when the target is a WOW64 process.
 
     std::expected<uintptr_t, std::string>
     manual_map_injection_from_file(std::string_view pe_path, std::uintptr_t process_id);
@@ -106,6 +115,8 @@ namespace yail
 ```
 
 On success, returns the base address of the mapped image in the target process. On failure, returns a string describing the error.
+
+The returned address is not a loader-managed `HMODULE`. A DLL mapped by yail is absent from the Windows loader module list, so passing that address to `FreeLibrary` or `FreeLibraryAndExitThread` is invalid. yail does not currently provide manual unmapping. A mapped DLL must stop its work and return, or be loaded with `LoadLibrary` when OS-managed unload is required.
 
 ## CMake Integration
 
@@ -144,6 +155,12 @@ The library locates two non-exported ntdll routines by byte signatures:
 Patterns are versioned per architecture and have been verified on **Windows 11 24H2**. Older Windows builds may require updated signatures — locate the function in WinDbg (`x ntdll!LdrpHandleTlsData`, `uf <addr>`), take ~16 unique leading bytes, and add the wildcarded pattern to the corresponding `find_*` array in `source/yail.cpp`.
 
 On modern x86 ntdll, both functions use `__fastcall` (args in `ECX`/`EDX`) despite their legacy `_Name@N` symbol decoration — the typedef and call sites in the source reflect that. If you target an older x86 Windows where these are still `__stdcall`, you'll need to swap the typedef to `NTAPI*`.
+
+The shellcode implementation is kept as a disabled reference block in `source/yail.cpp`. After changing it, temporarily enable the block, rebuild both `loader` targets, refresh the embedded loaders, then disable the block again:
+
+```bash
+python tools/generate_shellcode.py cmake-build/build/windows-release-vcpkg/loader.exe cmake-build/build/windows-release-vcpkg-x86/loader.exe source/shellcode.hpp
+```
 
 ## License
 

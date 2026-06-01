@@ -9,6 +9,8 @@ cmake --build cmake-build/build/windows-release-vcpkg` --target install
 
 The default install prefix is `cmake-build/install/windows-release-vcpkg`. To change it, pass `-DCMAKE_INSTALL_PREFIX=/your/path` during configure.
 
+The x64 library includes its x86 loader and can inject x86 payloads into WOW64 targets without an additional runtime executable.
+
 ## CMake integration
 
 After installing, add yail to your project:

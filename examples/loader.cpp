@@ -5,13 +5,13 @@
 #include <print>
 int main(int argc, char* argv[])
 {
-    std::string dllPath = "test_winexe.exe";
+    std::string dllPath = R"(C:\Users\orange\CLionProjects\l4bhop\cmake-build\build\windows-release\l4bhop.dll)";
     if (argc > 1)
         dllPath = argv[1];
 
     printf("[loader] Manual-mapping: %s\n\n", dllPath.c_str());
 
-    auto result = yail::manual_map_injection_from_file(dllPath, GetCurrentProcessId());
+    auto result = yail::manual_map_injection_from_file(dllPath, "left4dead2.exe");
 
     if (!result)
     {
