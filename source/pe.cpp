@@ -2,7 +2,7 @@
 
 namespace yail::detail
 {
-    std::optional<WORD> get_pe_machine(const std::span<std::uint8_t>& raw_pe)
+    std::optional<WORD> get_pe_machine(const std::span<const std::uint8_t>& raw_pe)
     {
         if (raw_pe.size() < sizeof(IMAGE_DOS_HEADER))
             return std::nullopt;

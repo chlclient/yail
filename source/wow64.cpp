@@ -338,7 +338,7 @@ namespace yail::detail
     } // namespace
 
     std::expected<std::uintptr_t, std::string> manual_map_injection_into_wow64_process(
-            const std::span<std::uint8_t>& raw_pe, const std::uintptr_t process_id)
+            const std::span<const std::uint8_t>& raw_pe, const std::uintptr_t process_id)
     {
         if (const auto architecture = validate_target_machine(process_id, IMAGE_FILE_MACHINE_I386); !architecture)
             return std::unexpected(architecture.error());

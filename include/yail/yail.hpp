@@ -22,11 +22,11 @@ namespace yail
 
     [[nodiscard]]
     std::expected<std::uintptr_t, std::string> manual_map_injection_from_raw(
-            const std::span<std::uint8_t>& raw_pe, std::uintptr_t process_id);
+            const std::span<const std::uint8_t>& raw_pe, std::uintptr_t process_id);
 
     [[nodiscard]]
     std::expected<std::uintptr_t, std::string> manual_map_injection_from_raw(
-            const std::span<std::uint8_t>& raw_pe, const std::string_view& process_name);
+            const std::span<const std::uint8_t>& raw_pe, const std::string_view& process_name);
 
     [[nodiscard]]
     std::expected<std::uintptr_t, std::string> manual_map_injection_from_file(
