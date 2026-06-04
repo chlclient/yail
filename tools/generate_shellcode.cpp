@@ -130,7 +130,7 @@ FunctionSizeResult get_function_size_zydis(const void* function, std::size_t max
     return result;
 }
 
-bool ValidateInstructionsZydis(const std::span<const std::uint8_t> code)
+bool validate_instructions_zydis(const std::span<const std::uint8_t> code)
 {
     if (code.empty())
         return false;
@@ -168,7 +168,7 @@ bool ValidateInstructionsZydis(const std::span<const std::uint8_t> code)
     return true;
 }
 
-std::string ReadTextFile(const std::filesystem::path& path)
+std::string read_text_file(const std::filesystem::path& path)
 {
     std::ifstream file(path, std::ios::binary);
     if (!file)
@@ -177,7 +177,7 @@ std::string ReadTextFile(const std::filesystem::path& path)
     return {std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
 }
 
-bool WriteTextFile(const std::filesystem::path& path, const std::string_view text)
+bool write_text_file(const std::filesystem::path& path, const std::string_view text)
 {
     std::error_code error;
     if (path.has_parent_path())
@@ -196,7 +196,7 @@ bool WriteTextFile(const std::filesystem::path& path, const std::string_view tex
     return file.good();
 }
 
-std::vector<std::uint8_t> ParseArrayBytes(const std::string_view source, const std::string_view name)
+std::vector<std::uint8_t> parse_array_bytes(const std::string_view source, const std::string_view name)
 {
     const auto name_pos = source.find(name);
     if (name_pos == std::string_view::npos)
@@ -227,23 +227,23 @@ std::vector<std::uint8_t> ParseArrayBytes(const std::string_view source, const s
     return bytes;
 }
 
-std::vector<std::uint8_t> ParseShellcodeArray(const std::string_view source, const std::string_view generated_name,
+std::vector<std::uint8_t> parse_shellcode_array(const std::string_view source, const std::string_view generated_name,
                                               const std::string_view legacy_name)
 {
-    auto bytes = ParseArrayBytes(source, generated_name);
+    auto bytes = parse_array_bytes(source, generated_name);
     if (!bytes.empty())
         return bytes;
-    return ParseArrayBytes(source, legacy_name);
+    return parse_array_bytes(source, legacy_name);
 }
 
-std::string FormatByte(const std::uint8_t byte)
+std::string format_byte(const std::uint8_t byte)
 {
     char buffer[5]{};
     std::snprintf(buffer, sizeof(buffer), "0x%02X", byte);
     return buffer;
 }
 
-std::string FormatArray(const std::string_view name, const std::span<const std::uint8_t> shellcode)
+std::string format_array(const std::string_view name, const std::span<const std::uint8_t> shellcode)
 {
     std::string output;
     output += "        constexpr std::array<std::uint8_t, ";
@@ -265,7 +265,7 @@ std::string FormatArray(const std::string_view name, const std::span<const std::
         {
             if (byte_index != index)
                 output += ", ";
-            output += FormatByte(shellcode[byte_index]);
+            output += format_byte(shellcode[byte_index]);
         }
         if (end != shellcode.size())
             output += ',';
@@ -275,7 +275,7 @@ std::string FormatArray(const std::string_view name, const std::span<const std::
     return output;
 }
 
-std::string FormatShellcodeSource(const std::span<const std::uint8_t> x64_shellcode,
+std::string format_shellcode_source(const std::span<const std::uint8_t> x64_shellcode,
                                   const std::span<const std::uint8_t> x86_shellcode)
 {
     std::string output;
@@ -286,9 +286,9 @@ std::string FormatShellcodeSource(const std::span<const std::uint8_t> x64_shellc
     output += "{\n";
     output += "    namespace\n";
     output += "    {\n";
-    output += FormatArray("x64_remote_shellcode_bytes", x64_shellcode);
+    output += format_array("x64_remote_shellcode_bytes", x64_shellcode);
     output += '\n';
-    output += FormatArray("x86_remote_shellcode_bytes", x86_shellcode);
+    output += format_array("x86_remote_shellcode_bytes", x86_shellcode);
     output += "    }\n\n";
     output += "    std::span<const std::uint8_t> x64_remote_shellcode()\n";
     output += "    {\n";
@@ -521,9 +521,9 @@ __declspec(safebuffers) __declspec(noinline) DWORD WINAPI remote_shellcode(const
     return 0;
 }
 
-std::vector<std::uint8_t> ExtractRemoteShellcode()
+std::vector<std::uint8_t> extract_remote_shellcode()
 {
-    auto shellcode_info = get_function_size_zydis(&remote_shellcode, 0x1000);
+    const auto shellcode_info = get_function_size_zydis(&remote_shellcode, 0x1000);
     auto begin = reinterpret_cast<const std::uint8_t*>(&remote_shellcode);
     auto end = begin + shellcode_info.size;
     return {begin, end};
@@ -540,23 +540,23 @@ int main(const int argc, char* argv[])
     const auto output_path = argc == 2 ? std::filesystem::path(argv[1])
                                        : std::filesystem::path(YAIL_SOURCE_DIR) / "source" / "shellcode.cpp";
 
-    const auto current_shellcode = ExtractRemoteShellcode();
+    const auto current_shellcode = extract_remote_shellcode();
     if (current_shellcode.empty())
     {
         std::fprintf(stderr, "failed to find remote_shellcode end marker\n");
         return 1;
     }
-    if (!ValidateInstructionsZydis(current_shellcode))
+    if (!validate_instructions_zydis(current_shellcode))
     {
         std::fprintf(stderr, "failed to validate remote_shellcode instructions\n");
         return 1;
     }
 
-    const auto existing_source = ReadTextFile(output_path);
+    const auto existing_source = read_text_file(output_path);
     auto x64_shellcode =
-            ParseShellcodeArray(existing_source, "x64_remote_shellcode_bytes", "x64_remote_shellcode");
+            parse_shellcode_array(existing_source, "x64_remote_shellcode_bytes", "x64_remote_shellcode");
     auto x86_shellcode =
-            ParseShellcodeArray(existing_source, "x86_remote_shellcode_bytes", "x86_remote_shellcode");
+            parse_shellcode_array(existing_source, "x86_remote_shellcode_bytes", "x86_remote_shellcode");
 
 #if defined(_M_X64) || defined(__x86_64__)
     constexpr const char* current_arch = "x64";
@@ -574,8 +574,8 @@ int main(const int argc, char* argv[])
                      "warning: one architecture is empty; run the generator for both x64 and x86 before shipping\n");
     }
 
-    const auto generated_source = FormatShellcodeSource(x64_shellcode, x86_shellcode);
-    if (!WriteTextFile(output_path, generated_source))
+    const auto generated_source = format_shellcode_source(x64_shellcode, x86_shellcode);
+    if (!write_text_file(output_path, generated_source))
     {
         std::fprintf(stderr, "failed to write %s\n", output_path.string().c_str());
         return 1;
