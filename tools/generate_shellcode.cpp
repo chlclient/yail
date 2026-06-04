@@ -302,7 +302,13 @@ std::string format_shellcode_source(const std::span<const std::uint8_t> x64_shel
     return output;
 }
 
-__declspec(safebuffers) __declspec(noinline) DWORD WINAPI remote_shellcode(const RemoteLoaderData* data)
+#ifdef _MSC_VER
+#pragma runtime_checks("", off)
+#pragma optimize("s", on)
+#pragma strict_gs_check(push, off)
+#endif
+DWORD WINAPI remote_shellcode(const RemoteLoaderData* data)
+
 {
     auto* base = data->image_base;
     auto* nt_headers = reinterpret_cast<IMAGE_NT_HEADERS*>(base + data->nt_headers_rva);
@@ -520,7 +526,11 @@ __declspec(safebuffers) __declspec(noinline) DWORD WINAPI remote_shellcode(const
 
     return 0;
 }
-
+#ifdef _MSC_VER
+#pragma strict_gs_check(pop)
+#pragma runtime_checks("", restore)
+#pragma optimize("", on)
+#endif
 std::vector<std::uint8_t> extract_remote_shellcode()
 {
     const auto shellcode_info = get_function_size_zydis(&remote_shellcode, 0x1000);
